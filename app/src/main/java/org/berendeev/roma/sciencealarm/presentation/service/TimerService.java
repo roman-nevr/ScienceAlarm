@@ -8,22 +8,21 @@ import android.provider.BaseColumns;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
 
-import org.berendeev.roma.sciencealarm.domain.AlarmRepository;
 import org.berendeev.roma.sciencealarm.domain.entity.Alarm;
 import org.berendeev.roma.sciencealarm.presentation.App;
+import org.berendeev.roma.sciencealarm.presentation.activity.AlarmListActivity;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-
-import javax.inject.Inject;
 
 import io.reactivex.disposables.CompositeDisposable;
 
 
 public class TimerService extends Service implements BaseColumns {
 
-    @Inject AlarmRepository alarmRepository;
+//    @Inject AlarmRepository alarmRepository;
 
     public static final int TIME_STEP = 500;
     public static final String COMMAND = "command";
@@ -44,10 +43,14 @@ public class TimerService extends Service implements BaseColumns {
 
     @Override public void onCreate() {
         super.onCreate();
-        initDi();
+//        initDi();
+        initAlarms();
         createNewAlarmsIntent();
-        subscribeOnAlarms();
         startTimer();
+    }
+
+    private void initAlarms() {
+        alarms = new ArrayList<>();
     }
 
     private void initDi() {
@@ -67,8 +70,15 @@ public class TimerService extends Service implements BaseColumns {
                 for (int index = 0; index < alarms.size(); index++) {
                     Alarm alarm = alarms.get(index);
                     if (alarm.isStarted()){
-                        alarm = alarm.toBuilder().time(alarm.time() + TIME_STEP).build();
+
+                        alarm = alarm.toBuilder().time(alarm.time() - TIME_STEP).build();
                         alarms.set(index, alarm);
+
+                        if (alarm.time() <= 0){
+                            alarm = alarm.toBuilder().isStarted(false).build();
+                            alarms.set(index, alarm);
+                            startMyActivity();
+                        }
                     }
                 }
             }
@@ -77,18 +87,19 @@ public class TimerService extends Service implements BaseColumns {
         timer.schedule(timerTask, TIME_STEP, TIME_STEP);
     }
 
+    private void startMyActivity(){
+        Intent intent = new Intent(TimerService.this, AlarmListActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+    }
+
     private void createNewAlarmsIntent() {
         newAlarmsIntent = new Intent(TIMER_SERVICE_BROADCAST_ACTION);
         newAlarmsIntent.putExtra(NEW_ALARMS, 1);
     }
 
-    private void subscribeOnAlarms() {
-        compositeDisposable.add(alarmRepository
-                .subscribeOnAlarms()
-                .subscribe(alarms -> {
-                    this.alarms = alarms;
-                    LocalBroadcastManager.getInstance(this).sendBroadcast(newAlarmsIntent);
-                }));
+    private void notifyDataSetChanges() {
+        LocalBroadcastManager.getInstance(this).sendBroadcast(newAlarmsIntent);
     }
 
     @Nullable @Override public IBinder onBind(Intent intent) {
@@ -102,25 +113,28 @@ public class TimerService extends Service implements BaseColumns {
             case ADD_NEW: {
                 int time = intent.getIntExtra(TIME, -1);
                 if (time != -1) {
-                    Alarm alarm = Alarm.create(-1, "", time, true);
+                    long id = 0;
+                    if(alarms.size() != 0){
+                        id = alarms.get(alarms.size() - 1).id() + 1;
+                    }
+                    Alarm alarm = Alarm.create(id, "", time, true);
                     addNew(alarm);
                 }
                 break;
             }
             case REMOVE: {
-                int id = intent.getIntExtra(_ID, -1);
+                long id = intent.getLongExtra(_ID, -1);
                 if (id != -1) {
                     remove(id);
                 }
             }
             case TOGGLE:{
-                int id = intent.getIntExtra(_ID, -1);
+                long id = intent.getLongExtra(_ID, -1);
                 for (int index = 0; index < alarms.size(); index++) {
                     if (alarms.get(index).id() == id){
                         Alarm alarm = alarms.get(index);
                         alarm = alarm.toBuilder().isStarted(!alarm.isStarted()).build();
                         alarms.set(index, alarm);
-                        alarmRepository.saveAlarm(alarm);
                     }
                 }
             }
@@ -129,12 +143,15 @@ public class TimerService extends Service implements BaseColumns {
         return START_STICKY;
     }
 
-    private void remove(int id) {
-        alarmRepository.deleteAlarm(id).subscribe();
+    private void remove(long id) {
+
+        alarms.remove(indexOfAlarm(id));
+        notifyDataSetChanges();
     }
 
     private void addNew(Alarm alarm) {
-        alarmRepository.saveAlarm(alarm).subscribe();
+        alarms.add(alarm);
+        notifyDataSetChanges();
     }
 
     public List<Alarm> getAlarms() {
@@ -145,5 +162,14 @@ public class TimerService extends Service implements BaseColumns {
         public TimerService getService() {
             return TimerService.this;
         }
+    }
+
+    private int indexOfAlarm(long id){
+        for (int index = 0; index < alarms.size(); index++) {
+            if(alarms.get(index).id() == id){
+                return index;
+            }
+        }
+        return -1;
     }
 }

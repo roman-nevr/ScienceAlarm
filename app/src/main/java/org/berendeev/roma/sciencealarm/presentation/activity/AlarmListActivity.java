@@ -39,6 +39,12 @@ import javax.inject.Inject;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
+import static android.provider.BaseColumns._ID;
+import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.ADD_NEW;
+import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.COMMAND;
+import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.REMOVE;
+import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.TOGGLE;
+
 public class AlarmListActivity extends AppCompatActivity implements AlarmListView, Router {
 
     @BindView(R.id.recycler_view) RecyclerView recyclerView;
@@ -170,7 +176,35 @@ public class AlarmListActivity extends AppCompatActivity implements AlarmListVie
         }
     }
 
-    @Override public void sendCommand(Intent intent) {
-        startService(intent);
+    @Override public void addNewAlarm(int time) {
+        startService(addIntent(time));
+    }
+
+    @Override public void removeAlarm(long id) {
+        startService(removeIntent(id));
+    }
+
+    @Override public void toggleAlarm(long id) {
+        startService(toggleIntent(id));
+    }
+
+    private Intent addIntent(int time){
+//        Intent intent = new Intent(this, TimerService.class);
+        serviceIntent.putExtra(COMMAND, ADD_NEW);
+        return serviceIntent;
+    }
+
+    private Intent removeIntent(long id){
+//        Intent intent = new Intent(this, TimerService.class);
+        serviceIntent.putExtra(COMMAND, REMOVE);
+        serviceIntent.putExtra(_ID, id);
+        return serviceIntent;
+    }
+
+    private Intent toggleIntent(long id){
+//        Intent intent = new Intent(this, TimerService.class);
+        serviceIntent.putExtra(COMMAND, TOGGLE);
+        serviceIntent.putExtra(_ID, id);
+        return serviceIntent;
     }
 }

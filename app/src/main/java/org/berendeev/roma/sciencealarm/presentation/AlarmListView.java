@@ -11,6 +11,10 @@ public interface AlarmListView {
     void setAlarms(List<Alarm> alarms);
 
     public interface Router{
-        void sendCommand(Intent intent);
+        void addNewAlarm(int time);
+
+        void removeAlarm(long id);
+
+        void toggleAlarm(long id);
     }
 }

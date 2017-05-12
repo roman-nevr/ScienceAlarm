@@ -71,13 +71,7 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
     }
 
     public void update(List<Alarm> newAlarms){
-
-        if (newAlarms.size() != alarms.size()){
-            alarms = (newAlarms);
-            notifyDataSetChanged();
-        }else {
-            alarms = (newAlarms);
-        }
+        notifyDataSetChanged();
     }
 
     private Pair<String, String> parseTime(int time){
