@@ -6,6 +6,7 @@ import java.util.List;
 
 import io.reactivex.Completable;
 import io.reactivex.Observable;
+import io.reactivex.Single;
 
 public interface AlarmRepository {
 
@@ -15,5 +16,7 @@ public interface AlarmRepository {
 
     Completable deleteAlarm(long id);
 
-    Observable<List<Alarm>> getAllAlarms();
+    Single<List<Alarm>> getAllAlarms();
+
+    Observable<List<Alarm>> subscribeOnAlarms();
 }

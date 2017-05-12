@@ -11,8 +11,10 @@ import android.widget.TextView;
 
 import org.berendeev.roma.sciencealarm.R;
 import org.berendeev.roma.sciencealarm.domain.entity.Alarm;
+import org.berendeev.roma.sciencealarm.presentation.entity.AlarmViewModel;
 import org.berendeev.roma.sciencealarm.presentation.presenter.AlarmListPresenter;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -26,14 +28,23 @@ import static android.support.v7.widget.RecyclerView.NO_POSITION;
 public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.AlarmHolder> {
 
     public static final int TIME_STEP = 500;
-    private List<Alarm> alarms;
+    private List<AlarmViewModel> alarms;
     private AlarmListPresenter presenter;
     private Activity activity;
 
     public AlarmListAdapter(List<Alarm> alarms, AlarmListPresenter presenter, Activity activity) {
-        this.alarms = alarms;
+        this.alarms = mapAlarms(alarms);
         this.presenter = presenter;
         this.activity = activity;
+    }
+
+    private List<AlarmViewModel> mapAlarms(List<Alarm> alarms){
+        List<AlarmViewModel> viewModels = new ArrayList<>();
+        for (Alarm alarm : alarms) {
+            AlarmViewModel viewModel = new AlarmViewModel(alarm.id(), alarm.time(), alarm.isStarted());
+            viewModels.add(viewModel);
+        }
+        return viewModels;
     }
 
     @Override public AlarmHolder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -42,15 +53,17 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
     }
 
     @Override public void onBindViewHolder(AlarmHolder holder, int position) {
-        Alarm alarm = alarms.get(position);
+        AlarmViewModel alarm = alarms.get(position);
         Pair<String, String> pair = parseTime(alarm);
         holder.minutes.setText(pair.first);
         holder.seconds.setText(pair.second);
-        if (alarm.isStarted()){
-            holder.startTimer();
-        }else {
-            holder.cancelTimer();
-        }
+        holder.viewModel = alarm;
+        holder.startTimer();
+//        if (alarm.isStarted){
+//            holder.startTimer();
+//        }else {
+//            holder.cancelTimer();
+//        }
     }
 
     @Override public int getItemCount() {
@@ -58,20 +71,26 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
     }
 
     public void update(List<Alarm> newAlarms){
-        notifyDataSetChanged();
-        this.alarms = newAlarms;
 
+        if (newAlarms.size() != alarms.size()){
+            alarms = mapAlarms(newAlarms);
+            notifyDataSetChanged();
+        }else {
+            for (int index = 0; index < alarms.size(); index++) {
+                alarms.get(index).time = newAlarms.get(index).time();
+            }
+        }
     }
 
-    private Pair<String, String> parseTime(Alarm alarm){
+    private Pair<String, String> parseTime(AlarmViewModel alarm){
 
         StringBuilder secondsBuilder = new StringBuilder();
-        secondsBuilder.append(alarm.time() % 60000 / 10000);
-        secondsBuilder.append(alarm.time() % 60000 % 10000 / 1000);
+        secondsBuilder.append(alarm.time % 60000 / 10000);
+        secondsBuilder.append(alarm.time % 60000 % 10000 / 1000);
 
         StringBuilder minutesBuilder = new StringBuilder();
-        minutesBuilder.append(alarm.time() / 60000 / 10);
-        minutesBuilder.append(alarm.time() / 60000 % 10);
+        minutesBuilder.append(alarm.time / 60000 / 10);
+        minutesBuilder.append(alarm.time / 60000 % 10);
 
         Pair<String, String> pair = new Pair<>(minutesBuilder.toString(), secondsBuilder.toString());
         return pair;
@@ -82,27 +101,26 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
         @BindView(R.id.minutes) TextView minutes;
         @BindView(R.id.seconds) TextView seconds;
         @BindView(R.id.item) ConstraintLayout item;
+        AlarmViewModel viewModel;
         private Timer timer;
-        private TimerTask timerTask;
 
         public AlarmHolder(View itemView) {
             super(itemView);
             ButterKnife.bind(this, itemView);
 
-
-
-
             item.setOnClickListener(v -> {
                 int adapterPosition = getAdapterPosition();
                 if (adapterPosition != NO_POSITION){
-                    presenter.onAlarmClick(adapterPosition);
+                    Alarm alarm = Alarm.create(viewModel.id, "", viewModel.time, viewModel.isStarted);
+                    presenter.onAlarmClick(alarm);
                 }
             });
             item.setOnLongClickListener(v -> {
 
                 int adapterPosition = getAdapterPosition();
                 if (adapterPosition != NO_POSITION){
-                    return presenter.onLongClick();
+                    Alarm alarm = Alarm.create(viewModel.id, "", viewModel.time, viewModel.isStarted);
+                    return presenter.onLongClick(alarm);
                 }else {
                     return false;
                 }
@@ -113,7 +131,6 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
             if(timer != null){
                 timer.cancel();
                 timer = null;
-                timerTask = null;
             }
         }
 
@@ -131,12 +148,10 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
                     if(adapterPosition == NO_POSITION){
                         return;
                     }
-                    Alarm alarm = alarms.get(adapterPosition);
-                    if(!alarm.isStarted()){
+                    AlarmViewModel alarm = alarms.get(adapterPosition);
+                    if(!alarm.isStarted){
                         return;
                     }
-                    alarm = alarm.toBuilder().time(alarm.time() + TIME_STEP).build();
-                    alarms.set(adapterPosition, alarm);
                     Pair<String, String> pair = parseTime(alarm);
                     activity.runOnUiThread(() -> {
                         minutes.setText(pair.first);

@@ -30,7 +30,6 @@ public class AlarmDataSource {
 
     public void saveAlarm(Alarm alarm){
         fillContentValues(alarm);
-
         database.insertWithOnConflict(ALARM_TABLE, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
