@@ -23,7 +23,7 @@ public class SwipeHelper extends ItemTouchHelper.SimpleCallback {
 
     @Override public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
         AlarmListAdapter.AlarmHolder holder= (AlarmListAdapter.AlarmHolder) viewHolder;
-        presenter.onAlarmSwiped(holder.viewModel.id);
+        presenter.onAlarmSwiped(holder.id);
         holder.cancelTimer();
     }
 

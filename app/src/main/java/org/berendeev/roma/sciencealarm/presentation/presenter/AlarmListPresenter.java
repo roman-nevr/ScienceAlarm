@@ -50,11 +50,11 @@ public class AlarmListPresenter {
         compositeDisposable.clear();
     }
 
-    public boolean onLongClick(Alarm alarm){
+    public boolean onLongClick(long id){
         return true;
     }
 
-    public void onAlarmClick(Alarm alarm){
+    public void onAlarmClick(long id){
 //        alarm = alarm.toBuilder().isStarted(!alarm.isStarted()).build();
 //        alarms.set(id, alarm);
 //        view.setAlarms(alarms);

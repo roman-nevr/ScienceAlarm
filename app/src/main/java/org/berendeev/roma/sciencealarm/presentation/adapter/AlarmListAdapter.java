@@ -28,12 +28,12 @@ import static android.support.v7.widget.RecyclerView.NO_POSITION;
 public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.AlarmHolder> {
 
     public static final int TIME_STEP = 500;
-    private List<AlarmViewModel> alarms;
+    private List<Alarm> alarms;
     private AlarmListPresenter presenter;
     private Activity activity;
 
     public AlarmListAdapter(List<Alarm> alarms, AlarmListPresenter presenter, Activity activity) {
-        this.alarms = mapAlarms(alarms);
+        this.alarms = (alarms);
         this.presenter = presenter;
         this.activity = activity;
     }
@@ -53,11 +53,11 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
     }
 
     @Override public void onBindViewHolder(AlarmHolder holder, int position) {
-        AlarmViewModel alarm = alarms.get(position);
-        Pair<String, String> pair = parseTime(alarm);
+        Alarm alarm = alarms.get(position);
+        Pair<String, String> pair = parseTime(alarm.time());
         holder.minutes.setText(pair.first);
         holder.seconds.setText(pair.second);
-        holder.viewModel = alarm;
+        holder.id = alarm.id();
         holder.startTimer();
 //        if (alarm.isStarted){
 //            holder.startTimer();
@@ -73,27 +73,22 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
     public void update(List<Alarm> newAlarms){
 
         if (newAlarms.size() != alarms.size()){
-            alarms = mapAlarms(newAlarms);
+            alarms = (newAlarms);
             notifyDataSetChanged();
         }else {
-            for (int index = 0; index < alarms.size(); index++) {
-                alarms.get(index).time = newAlarms.get(index).time();
-            }
+            alarms = (newAlarms);
         }
     }
 
-    private Pair<String, String> parseTime(AlarmViewModel alarm){
+    private Pair<String, String> parseTime(int time){
 
-        StringBuilder secondsBuilder = new StringBuilder();
-        secondsBuilder.append(alarm.time % 60000 / 10000);
-        secondsBuilder.append(alarm.time % 60000 % 10000 / 1000);
+        String secondsBuilder = String.valueOf(time % 60000 / 10000) +
+                time % 60000 % 10000 / 1000;
 
-        StringBuilder minutesBuilder = new StringBuilder();
-        minutesBuilder.append(alarm.time / 60000 / 10);
-        minutesBuilder.append(alarm.time / 60000 % 10);
+        String minutesBuilder = String.valueOf(time / 60000 / 10) +
+                time / 60000 % 10;
 
-        Pair<String, String> pair = new Pair<>(minutesBuilder.toString(), secondsBuilder.toString());
-        return pair;
+        return new Pair<>(minutesBuilder, secondsBuilder);
     }
 
     class AlarmHolder extends RecyclerView.ViewHolder{
@@ -101,7 +96,7 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
         @BindView(R.id.minutes) TextView minutes;
         @BindView(R.id.seconds) TextView seconds;
         @BindView(R.id.item) ConstraintLayout item;
-        AlarmViewModel viewModel;
+        long id;
         private Timer timer;
 
         public AlarmHolder(View itemView) {
@@ -111,16 +106,14 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
             item.setOnClickListener(v -> {
                 int adapterPosition = getAdapterPosition();
                 if (adapterPosition != NO_POSITION){
-                    Alarm alarm = Alarm.create(viewModel.id, "", viewModel.time, viewModel.isStarted);
-                    presenter.onAlarmClick(alarm);
+                    presenter.onAlarmClick(id);
                 }
             });
             item.setOnLongClickListener(v -> {
 
                 int adapterPosition = getAdapterPosition();
                 if (adapterPosition != NO_POSITION){
-                    Alarm alarm = Alarm.create(viewModel.id, "", viewModel.time, viewModel.isStarted);
-                    return presenter.onLongClick(alarm);
+                    return presenter.onLongClick(id);
                 }else {
                     return false;
                 }
@@ -148,11 +141,12 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
                     if(adapterPosition == NO_POSITION){
                         return;
                     }
-                    AlarmViewModel alarm = alarms.get(adapterPosition);
-                    if(!alarm.isStarted){
+//                    AlarmViewModel alarm = alarms.get(adapterPosition);
+                    Alarm alarm = getAlarm(id);
+                    if(!alarm.isStarted()){
                         return;
                     }
-                    Pair<String, String> pair = parseTime(alarm);
+                    Pair<String, String> pair = parseTime(alarm.time());
                     activity.runOnUiThread(() -> {
                         minutes.setText(pair.first);
                         seconds.setText(pair.second);
@@ -160,5 +154,14 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
                 }
             };
         }
+    }
+
+    private Alarm getAlarm(long id) {
+        for (Alarm alarm : alarms) {
+            if(alarm.id() == id){
+                return alarm;
+            }
+        }
+        return null;
     }
 }

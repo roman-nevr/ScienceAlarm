@@ -84,7 +84,7 @@ public class TimerService extends Service implements BaseColumns {
 
     private void subscribeOnAlarms() {
         compositeDisposable.add(alarmRepository
-                .getAllAlarms()
+                .subscribeOnAlarms()
                 .subscribe(alarms -> {
                     this.alarms = alarms;
                     LocalBroadcastManager.getInstance(this).sendBroadcast(newAlarmsIntent);
