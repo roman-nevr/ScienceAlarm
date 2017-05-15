@@ -16,5 +16,7 @@ public interface AlarmListView {
         void removeAlarm(long id);
 
         void toggleAlarm(long id);
+
+        void showNewAlarmDialog();
     }
 }

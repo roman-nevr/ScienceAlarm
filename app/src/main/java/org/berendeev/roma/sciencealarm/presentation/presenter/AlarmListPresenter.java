@@ -4,22 +4,13 @@ import android.content.Intent;
 
 import org.berendeev.roma.sciencealarm.domain.entity.Alarm;
 import org.berendeev.roma.sciencealarm.presentation.AlarmListView;
-import org.berendeev.roma.sciencealarm.presentation.activity.AlarmListActivity;
 import org.berendeev.roma.sciencealarm.presentation.service.TimerService;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Inject;
 
 import io.reactivex.disposables.CompositeDisposable;
-
-import static android.provider.BaseColumns._ID;
-import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.ADD_NEW;
-import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.COMMAND;
-import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.REMOVE;
-import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.TIME;
-import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.TOGGLE;
 
 public class AlarmListPresenter {
 
@@ -62,9 +53,10 @@ public class AlarmListPresenter {
     public void onFabClick() {
 //        alarms.add(createAlarm());
 //        view.setAlarms(alarms);
-        serviceIntent.putExtra(COMMAND, ADD_NEW);
-        serviceIntent.putExtra(TIME, 3000);
-        router.addNewAlarm(3000);
+//        serviceIntent.putExtra(COMMAND, ADD_NEW);
+//        serviceIntent.putExtra(TIME, 3000);
+//        router.addNewAlarm(3000);
+        router.showNewAlarmDialog();
     }
 
     private Alarm createAlarm(){
@@ -85,5 +77,10 @@ public class AlarmListPresenter {
 
     public void setServiceIntent(Intent serviceIntent) {
         this.serviceIntent = serviceIntent;
+    }
+
+    public void addNewAlarm(int minute, int second) {
+        int time = minute * 60 + second;
+        router.addNewAlarm(time * 1000);
     }
 }

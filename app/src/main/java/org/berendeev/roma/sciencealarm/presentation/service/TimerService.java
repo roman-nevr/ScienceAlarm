@@ -40,6 +40,7 @@ public class TimerService extends Service implements BaseColumns {
     private CompositeDisposable compositeDisposable = new CompositeDisposable();
     private Intent newAlarmsIntent;
     private Timer timer;
+    private boolean isBinded;
 
     @Override public void onCreate() {
         super.onCreate();
@@ -68,18 +69,7 @@ public class TimerService extends Service implements BaseColumns {
         TimerTask timerTask = new TimerTask() {
             @Override public void run() {
                 for (int index = 0; index < alarms.size(); index++) {
-                    Alarm alarm = alarms.get(index);
-                    if (alarm.isStarted()){
-
-                        alarm = alarm.toBuilder().time(alarm.time() - TIME_STEP).build();
-                        alarms.set(index, alarm);
-
-                        if (alarm.time() <= 0){
-                            alarm = alarm.toBuilder().isStarted(false).build();
-                            alarms.set(index, alarm);
-                            startMyActivity();
-                        }
-                    }
+                    decreaseTimer(index);
                 }
             }
         };
@@ -87,9 +77,32 @@ public class TimerService extends Service implements BaseColumns {
         timer.schedule(timerTask, TIME_STEP, TIME_STEP);
     }
 
+    private void decreaseTimer(int index){
+        Alarm alarm = alarms.get(index);
+        if (alarm.isStarted()){
+
+            alarm = alarm.toBuilder().time(alarm.time() - TIME_STEP).build();
+            alarms.set(index, alarm);
+
+            if (alarm.time() <= 0){
+                stopTimer(alarm, index);
+                if (!isBinded){
+                    startMyActivity();
+                }
+            }
+        }
+    }
+
+    private void stopTimer(Alarm alarm, int index){
+        alarm = alarm.toBuilder().isStarted(false).build();
+        alarms.set(index, alarm);
+    }
+
     private void startMyActivity(){
         Intent intent = new Intent(TimerService.this, AlarmListActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setAction(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_LAUNCHER);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
     }
 
@@ -103,7 +116,13 @@ public class TimerService extends Service implements BaseColumns {
     }
 
     @Nullable @Override public IBinder onBind(Intent intent) {
+        isBinded = true;
         return binder;
+    }
+
+    @Override public boolean onUnbind(Intent intent) {
+        isBinded = false;
+        return super.onUnbind(intent);
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {

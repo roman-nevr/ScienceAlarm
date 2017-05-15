@@ -1,6 +1,7 @@
 package org.berendeev.roma.sciencealarm.presentation.activity;
 
 import android.app.PendingIntent;
+import android.app.TimePickerDialog.OnTimeSetListener;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -21,6 +22,7 @@ import android.support.v7.widget.Toolbar;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.TimePicker;
 
 import org.berendeev.roma.sciencealarm.R;
 import org.berendeev.roma.sciencealarm.domain.entity.Alarm;
@@ -31,7 +33,10 @@ import org.berendeev.roma.sciencealarm.presentation.App;
 import org.berendeev.roma.sciencealarm.presentation.adapter.SwipeHelper;
 import org.berendeev.roma.sciencealarm.presentation.presenter.AlarmListPresenter;
 import org.berendeev.roma.sciencealarm.presentation.service.TimerService;
+import org.berendeev.roma.sciencealarm.presentation.view.DurationPicker;
+import org.berendeev.roma.sciencealarm.presentation.view.DurationPicker.TimeSetListener;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -43,6 +48,7 @@ import static android.provider.BaseColumns._ID;
 import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.ADD_NEW;
 import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.COMMAND;
 import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.REMOVE;
+import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.TIME;
 import static org.berendeev.roma.sciencealarm.presentation.service.TimerService.TOGGLE;
 
 public class AlarmListActivity extends AppCompatActivity implements AlarmListView, Router {
@@ -157,6 +163,8 @@ public class AlarmListActivity extends AppCompatActivity implements AlarmListVie
         int id = item.getItemId();
 
         if (id == R.id.action_finish) {
+            setAlarms(new ArrayList<>());
+            adapter.finish();
             stopService(serviceIntent);
             finish();
             return true;
@@ -188,9 +196,20 @@ public class AlarmListActivity extends AppCompatActivity implements AlarmListVie
         startService(toggleIntent(id));
     }
 
+    @Override public void showNewAlarmDialog() {
+        TimeSetListener listener = new TimeSetListener() {
+            @Override public void onTimeSet(TimePicker view, int minute, int second) {
+                presenter.addNewAlarm(minute, second);
+            }
+        };
+        DurationPicker picker = DurationPicker.newInstance(this, listener, 0, 0);
+        picker.show();
+    }
+
     private Intent addIntent(int time){
 //        Intent intent = new Intent(this, TimerService.class);
         serviceIntent.putExtra(COMMAND, ADD_NEW);
+        serviceIntent.putExtra(TIME, time);
         return serviceIntent;
     }
 

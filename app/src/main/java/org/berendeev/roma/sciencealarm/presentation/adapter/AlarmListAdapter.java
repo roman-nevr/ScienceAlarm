@@ -1,7 +1,14 @@
 package org.berendeev.roma.sciencealarm.presentation.adapter;
 
+import android.animation.ArgbEvaluator;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.content.res.Resources;
+import android.media.MediaPlayer;
+import android.provider.Settings;
 import android.support.constraint.ConstraintLayout;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
 import android.util.Pair;
 import android.view.LayoutInflater;
@@ -14,6 +21,7 @@ import org.berendeev.roma.sciencealarm.domain.entity.Alarm;
 import org.berendeev.roma.sciencealarm.presentation.entity.AlarmViewModel;
 import org.berendeev.roma.sciencealarm.presentation.presenter.AlarmListPresenter;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
@@ -31,20 +39,17 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
     private List<Alarm> alarms;
     private AlarmListPresenter presenter;
     private Activity activity;
+    private int normalColor;
+    private int flashColor;
+    private MediaPlayer player;
+
 
     public AlarmListAdapter(List<Alarm> alarms, AlarmListPresenter presenter, Activity activity) {
         this.alarms = (alarms);
         this.presenter = presenter;
         this.activity = activity;
-    }
-
-    private List<AlarmViewModel> mapAlarms(List<Alarm> alarms){
-        List<AlarmViewModel> viewModels = new ArrayList<>();
-        for (Alarm alarm : alarms) {
-            AlarmViewModel viewModel = new AlarmViewModel(alarm.id(), alarm.time(), alarm.isStarted());
-            viewModels.add(viewModel);
-        }
-        return viewModels;
+        normalColor = ContextCompat.getColor(activity.getApplicationContext(), android.R.color.tertiary_text_dark);
+        flashColor = ContextCompat.getColor(activity.getApplicationContext(), R.color.flashColor);
     }
 
     @Override public AlarmHolder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -59,22 +64,31 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
         holder.seconds.setText(pair.second);
         holder.id = alarm.id();
         holder.startTimer();
-//        if (alarm.isStarted){
-//            holder.startTimer();
-//        }else {
-//            holder.cancelTimer();
-//        }
     }
 
     @Override public int getItemCount() {
         return alarms.size();
     }
 
-    public void update(List<Alarm> newAlarms){
+    public void update(List<Alarm> newAlarms) {
+        alarms = newAlarms;
         notifyDataSetChanged();
+        if(isNeedToStopPlayer()){
+            soundOff();
+        }
     }
 
-    private Pair<String, String> parseTime(int time){
+    public void finish(){
+        player.stop();
+        player.release();
+        player = null;
+    }
+
+    private void checkAndStopPlayer() {
+
+    }
+
+    private Pair<String, String> parseTime(int time) {
 
         String secondsBuilder = String.valueOf(time % 60000 / 10000) +
                 time % 60000 % 10000 / 1000;
@@ -85,13 +99,43 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
         return new Pair<>(minutesBuilder, secondsBuilder);
     }
 
-    class AlarmHolder extends RecyclerView.ViewHolder{
+    private void soundOn(){
+        if(player == null){
+            player = MediaPlayer.create(activity,
+                    Settings.System.DEFAULT_RINGTONE_URI);
+            player.start();
+        }else if (!player.isPlaying()){
+            player.start();
+        }
+    }
+
+    private boolean isNeedToStopPlayer(){
+        if(player == null || !player.isPlaying()){
+            return false;
+        }
+        boolean needToStop = true;
+        for (Alarm alarm : alarms) {
+            if (alarm.time() <= 0){
+                needToStop = false;
+            }
+        }
+        return needToStop;
+    }
+
+    private void soundOff(){
+        player.pause();
+        player.seekTo(0);
+    }
+
+    class AlarmHolder extends RecyclerView.ViewHolder {
 
         @BindView(R.id.minutes) TextView minutes;
         @BindView(R.id.seconds) TextView seconds;
         @BindView(R.id.item) ConstraintLayout item;
         long id;
         private Timer timer;
+        private ObjectAnimator minutesAnimator;
+        private ObjectAnimator secondsAnimator;
 
         public AlarmHolder(View itemView) {
             super(itemView);
@@ -99,45 +143,53 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
 
             item.setOnClickListener(v -> {
                 int adapterPosition = getAdapterPosition();
-                if (adapterPosition != NO_POSITION){
+                if (adapterPosition != NO_POSITION) {
                     presenter.onAlarmClick(id);
                 }
             });
             item.setOnLongClickListener(v -> {
 
                 int adapterPosition = getAdapterPosition();
-                if (adapterPosition != NO_POSITION){
+                if (adapterPosition != NO_POSITION) {
                     return presenter.onLongClick(id);
-                }else {
+                } else {
                     return false;
                 }
             });
         }
 
-        public void cancelTimer(){
-            if(timer != null){
+        public void cancelTimer() {
+            if (timer != null) {
                 timer.cancel();
                 timer = null;
+                stopBlink();
             }
         }
 
-        public void startTimer(){
-            if(timer == null){
-                timer = new Timer();
-                timer.schedule(createTask(), TIME_STEP, TIME_STEP);
+        public void startTimer() {
+            if (timer != null) {
+//                timer.cancel();
+//                timer = null;
+                cancelTimer();
             }
+            timer = new Timer();
+            timer.schedule(createTask(), TIME_STEP, TIME_STEP);
         }
 
-        private TimerTask createTask(){
+        private TimerTask createTask() {
             return new TimerTask() {
                 @Override public void run() {
                     int adapterPosition = getAdapterPosition();
-                    if(adapterPosition == NO_POSITION){
+                    if (adapterPosition == NO_POSITION) {
                         return;
                     }
-//                    AlarmViewModel alarm = alarms.get(adapterPosition);
                     Alarm alarm = getAlarm(id);
-                    if(!alarm.isStarted()){
+                    if (alarm.time() <= 0) {
+                        startBlink();
+                    }else {
+                        stopBlink();
+                    }
+                    if (!alarm.isStarted()) {
                         return;
                     }
                     Pair<String, String> pair = parseTime(alarm.time());
@@ -148,11 +200,56 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
                 }
             };
         }
+
+
+        private void stopBlink() {
+            activity.runOnUiThread(() -> {
+                if (minutesAnimator != null){
+                    minutesAnimator.cancel();
+//                    minutesAnimator.
+                    secondsAnimator.cancel();
+                    minutes.setTextColor(normalColor);
+                    seconds.setTextColor(normalColor);
+                }
+            });
+
+
+        }
+
+        private void startBlink() {
+            activity.runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    if (minutesAnimator == null){
+                        minutesAnimator = getAnimator(minutes);
+                        secondsAnimator = getAnimator(seconds);
+
+                    }else {
+                        if(!minutesAnimator.isStarted()){
+                            minutesAnimator.start();
+                            secondsAnimator.start();
+                        }
+                    }
+                    soundOn();
+                }
+            });
+
+        }
+
+        private ObjectAnimator getAnimator(TextView view){
+            ObjectAnimator animator = ObjectAnimator.ofObject(view,
+                    "textColor", new ArgbEvaluator(), normalColor, flashColor);
+            animator.setDuration(300);
+            animator.start();
+            animator.setRepeatMode(ValueAnimator.REVERSE);
+            animator.setRepeatCount(ValueAnimator.INFINITE);
+            return animator;
+        }
+
     }
 
     private Alarm getAlarm(long id) {
         for (Alarm alarm : alarms) {
-            if(alarm.id() == id){
+            if (alarm.id() == id) {
                 return alarm;
             }
         }
