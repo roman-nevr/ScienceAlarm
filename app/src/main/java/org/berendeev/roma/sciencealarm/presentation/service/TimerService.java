@@ -56,7 +56,7 @@ public class TimerService extends Service implements BaseColumns {
         createNewAlarmsIntent();
         startTimer();
         notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        sendNotif();
+        sendNotification();
     }
 
     private void initAlarms() {
@@ -239,29 +239,15 @@ public class TimerService extends Service implements BaseColumns {
         return needToStop;
     }
 
-    private void sendNotif() {
-        // 1-я часть
-//        Notification notification = new Notification(R.drawable.ic_launcher, "Text in status bar",
-//                System.currentTimeMillis());
+    private void sendNotification() {
+
         Notification notification = new Notification.Builder(this)
                 .setContentTitle("Service started")
                 .setSmallIcon(R.mipmap.ic_launcher)
-//                .setLargeIcon(aBitmap)
                 .build();
 
+        notification.flags |= Notification.FLAG_NO_CLEAR;
 
-        // 3-я часть
-//        Intent intent = new Intent(this, MainActivity.class);
-//        intent.putExtra(MainActivity.FILE_NAME, "somefile");
-//        PendingIntent pIntent = PendingIntent.getActivity(this, 0, intent, 0);
-
-        // 2-я часть
-//        notification.setLatestEventInfo(this, "Notification's title", "Notification's text", pIntent);
-
-        // ставим флаг, чтобы уведомление пропало после нажатия
-        notification.flags |= /*Notification.FLAG_AUTO_CANCEL |*/ Notification.FLAG_NO_CLEAR;
-
-        // отправляем
         notificationManager.notify(SERVICE_NOTIFICATION_ID, notification);
     }
 
