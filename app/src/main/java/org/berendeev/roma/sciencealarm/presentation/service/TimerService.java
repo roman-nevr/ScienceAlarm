@@ -1,5 +1,7 @@
 package org.berendeev.roma.sciencealarm.presentation.service;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.media.MediaPlayer;
@@ -10,6 +12,7 @@ import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
 
+import org.berendeev.roma.sciencealarm.R;
 import org.berendeev.roma.sciencealarm.domain.entity.Alarm;
 import org.berendeev.roma.sciencealarm.presentation.App;
 import org.berendeev.roma.sciencealarm.presentation.activity.AlarmListActivity;
@@ -24,7 +27,7 @@ import io.reactivex.disposables.CompositeDisposable;
 
 public class TimerService extends Service implements BaseColumns {
 
-    public static final int TIME_STEP = 500;
+    public static final int TIME_STEP = 250;
 
     public static final String COMMAND = "command";
     public static final String NEW_ALARMS = "new_alarms";
@@ -35,6 +38,7 @@ public class TimerService extends Service implements BaseColumns {
     public static final int REMOVE = 2;
     public static final int TOGGLE = 3;
     public static final int STOP = 4;
+    public static final int SERVICE_NOTIFICATION_ID = 1;
     private MyBinder binder = new MyBinder();
 
     private MediaPlayer player;
@@ -43,6 +47,7 @@ public class TimerService extends Service implements BaseColumns {
     private Intent newAlarmsIntent;
     private Timer timer;
     private boolean isBinded;
+    private NotificationManager notificationManager;
 
     @Override public void onCreate() {
         super.onCreate();
@@ -50,6 +55,8 @@ public class TimerService extends Service implements BaseColumns {
         initAlarms();
         createNewAlarmsIntent();
         startTimer();
+        notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        sendNotif();
     }
 
     private void initAlarms() {
@@ -68,6 +75,7 @@ public class TimerService extends Service implements BaseColumns {
         if (player != null){
             player.release();
         }
+        clearNotification();
     }
 
     private void startTimer() {
@@ -229,5 +237,35 @@ public class TimerService extends Service implements BaseColumns {
             }
         }
         return needToStop;
+    }
+
+    private void sendNotif() {
+        // 1-я часть
+//        Notification notification = new Notification(R.drawable.ic_launcher, "Text in status bar",
+//                System.currentTimeMillis());
+        Notification notification = new Notification.Builder(this)
+                .setContentTitle("Service started")
+                .setSmallIcon(R.mipmap.ic_launcher)
+//                .setLargeIcon(aBitmap)
+                .build();
+
+
+        // 3-я часть
+//        Intent intent = new Intent(this, MainActivity.class);
+//        intent.putExtra(MainActivity.FILE_NAME, "somefile");
+//        PendingIntent pIntent = PendingIntent.getActivity(this, 0, intent, 0);
+
+        // 2-я часть
+//        notification.setLatestEventInfo(this, "Notification's title", "Notification's text", pIntent);
+
+        // ставим флаг, чтобы уведомление пропало после нажатия
+        notification.flags |= /*Notification.FLAG_AUTO_CANCEL |*/ Notification.FLAG_NO_CLEAR;
+
+        // отправляем
+        notificationManager.notify(SERVICE_NOTIFICATION_ID, notification);
+    }
+
+    private void clearNotification() {
+        notificationManager.cancel(SERVICE_NOTIFICATION_ID);
     }
 }
