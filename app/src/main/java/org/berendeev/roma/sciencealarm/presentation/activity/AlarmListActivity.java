@@ -164,7 +164,6 @@ public class AlarmListActivity extends AppCompatActivity implements AlarmListVie
 
         if (id == R.id.action_finish) {
             setAlarms(new ArrayList<>());
-            adapter.finish();
             stopService(serviceIntent);
             finish();
             return true;

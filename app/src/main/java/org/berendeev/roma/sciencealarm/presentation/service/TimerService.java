@@ -2,9 +2,11 @@ package org.berendeev.roma.sciencealarm.presentation.service;
 
 import android.app.Service;
 import android.content.Intent;
+import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
 import android.provider.BaseColumns;
+import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
 
@@ -22,20 +24,20 @@ import io.reactivex.disposables.CompositeDisposable;
 
 public class TimerService extends Service implements BaseColumns {
 
-//    @Inject AlarmRepository alarmRepository;
-
     public static final int TIME_STEP = 500;
+
     public static final String COMMAND = "command";
     public static final String NEW_ALARMS = "new_alarms";
     public static final String TIME = "time";
     public static final String TIMER_SERVICE_BROADCAST_ACTION = "org.berendeev.roma.sciencealarm.presentation.service.alarms";
-
     public static final int ADD_NEW = 1;
+
     public static final int REMOVE = 2;
     public static final int TOGGLE = 3;
     public static final int STOP = 4;
-
     private MyBinder binder = new MyBinder();
+
+    private MediaPlayer player;
     private List<Alarm> alarms;
     private CompositeDisposable compositeDisposable = new CompositeDisposable();
     private Intent newAlarmsIntent;
@@ -63,6 +65,9 @@ public class TimerService extends Service implements BaseColumns {
         if(timer != null){
             timer.cancel();
         }
+        if (player != null){
+            player.release();
+        }
     }
 
     private void startTimer() {
@@ -85,7 +90,7 @@ public class TimerService extends Service implements BaseColumns {
             alarms.set(index, alarm);
 
             if (alarm.time() <= 0){
-                stopTimer(alarm, index);
+                stopAlarmTimer(alarm, index);
                 if (!isBinded){
                     startMyActivity();
                 }
@@ -93,7 +98,10 @@ public class TimerService extends Service implements BaseColumns {
         }
     }
 
-    private void stopTimer(Alarm alarm, int index){
+    private void stopAlarmTimer(Alarm alarm, int index){
+        if(alarm.isStarted()){
+            soundOn();
+        }
         alarm = alarm.toBuilder().isStarted(false).build();
         alarms.set(index, alarm);
     }
@@ -145,6 +153,9 @@ public class TimerService extends Service implements BaseColumns {
                 long id = intent.getLongExtra(_ID, -1);
                 if (id != -1) {
                     remove(id);
+                    if (isNeedToStopPlayer()){
+                        soundOff();
+                    }
                 }
             }
             case TOGGLE:{
@@ -190,5 +201,33 @@ public class TimerService extends Service implements BaseColumns {
             }
         }
         return -1;
+    }
+
+    private void soundOn(){
+        if(player == null){
+            player = MediaPlayer.create(this,
+                    Settings.System.DEFAULT_RINGTONE_URI);
+            player.start();
+        }else if (!player.isPlaying()){
+            player.start();
+        }
+    }
+
+    private void soundOff(){
+        player.pause();
+        player.seekTo(0);
+    }
+
+    private boolean isNeedToStopPlayer(){
+        if(player == null || !player.isPlaying()){
+            return false;
+        }
+        boolean needToStop = true;
+        for (Alarm alarm : alarms) {
+            if (alarm.time() <= 0){
+                needToStop = false;
+            }
+        }
+        return needToStop;
     }
 }

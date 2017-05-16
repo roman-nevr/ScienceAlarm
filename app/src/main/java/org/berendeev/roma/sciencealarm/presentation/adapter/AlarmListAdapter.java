@@ -41,7 +41,6 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
     private Activity activity;
     private int normalColor;
     private int flashColor;
-    private MediaPlayer player;
 
 
     public AlarmListAdapter(List<Alarm> alarms, AlarmListPresenter presenter, Activity activity) {
@@ -73,19 +72,6 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
     public void update(List<Alarm> newAlarms) {
         alarms = newAlarms;
         notifyDataSetChanged();
-        if(isNeedToStopPlayer()){
-            soundOff();
-        }
-    }
-
-    public void finish(){
-        player.stop();
-        player.release();
-        player = null;
-    }
-
-    private void checkAndStopPlayer() {
-
     }
 
     private Pair<String, String> parseTime(int time) {
@@ -97,34 +83,6 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
                 time / 60000 % 10;
 
         return new Pair<>(minutesBuilder, secondsBuilder);
-    }
-
-    private void soundOn(){
-        if(player == null){
-            player = MediaPlayer.create(activity,
-                    Settings.System.DEFAULT_RINGTONE_URI);
-            player.start();
-        }else if (!player.isPlaying()){
-            player.start();
-        }
-    }
-
-    private boolean isNeedToStopPlayer(){
-        if(player == null || !player.isPlaying()){
-            return false;
-        }
-        boolean needToStop = true;
-        for (Alarm alarm : alarms) {
-            if (alarm.time() <= 0){
-                needToStop = false;
-            }
-        }
-        return needToStop;
-    }
-
-    private void soundOff(){
-        player.pause();
-        player.seekTo(0);
     }
 
     class AlarmHolder extends RecyclerView.ViewHolder {
@@ -229,7 +187,6 @@ public class AlarmListAdapter extends RecyclerView.Adapter<AlarmListAdapter.Alar
                             secondsAnimator.start();
                         }
                     }
-                    soundOn();
                 }
             });
 
